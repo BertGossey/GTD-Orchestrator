@@ -66,6 +66,9 @@ export async function moveTask(
   targetSection: TaskSection,
   scheduledDate?: Date
 ) {
+  // Fetch current task to know source section
+  const current = await db.task.findUniqueOrThrow({ where: { id } });
+
   // Get next sort order in target section
   const maxOrder = await db.task.aggregate({
     where: { section: targetSection },
@@ -77,6 +80,17 @@ export async function moveTask(
     section: targetSection,
     sortOrder: nextOrder,
   };
+
+  // Clear stale fields when leaving a section
+  if (current.section === "WAITING" && targetSection !== "WAITING") {
+    updateData.waitingFor = null;
+  }
+  if (current.section === "SCHEDULED" && targetSection !== "SCHEDULED") {
+    updateData.scheduledDate = null;
+  }
+  if (current.section === "LOGBOOK" && targetSection !== "LOGBOOK") {
+    updateData.completedAt = null;
+  }
 
   if (targetSection === "LOGBOOK") {
     updateData.completedAt = new Date();

@@ -8,6 +8,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { GtdSidebar } from "@/components/gtd/sidebar";
 import { RapidEntry } from "@/components/gtd/rapid-entry";
 import { ProjectFormDialog } from "@/components/gtd/project-form";
@@ -63,7 +64,12 @@ export function GtdLayoutClient({
       // Within-list reorder
       if (overData?.sortableIds && activeData?.section === overData?.section) {
         const ids = overData.sortableIds as string[];
-        await reorderTasks(activeData!.section as TaskSection, ids);
+        const oldIndex = ids.indexOf(active.id as string);
+        const newIndex = ids.indexOf(over.id as string);
+        if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+          const newOrder = arrayMove(ids, oldIndex, newIndex);
+          await reorderTasks(activeData!.section as TaskSection, newOrder);
+        }
       }
     },
     []
