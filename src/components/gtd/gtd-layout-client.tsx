@@ -1,0 +1,122 @@
+"use client";
+
+import { useState, useCallback } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  pointerWithin,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { GtdSidebar } from "@/components/gtd/sidebar";
+import { RapidEntry } from "@/components/gtd/rapid-entry";
+import { ProjectFormDialog } from "@/components/gtd/project-form";
+import { ScheduledDateDialog } from "@/components/gtd/scheduled-date-dialog";
+import { moveTask, reorderTasks } from "@/actions/tasks";
+import type { Project, TaskSection } from "@/generated/prisma/client";
+
+export function GtdLayoutClient({
+  projects,
+  inboxCount,
+  children,
+}: {
+  projects: Project[];
+  inboxCount: number;
+  children: React.ReactNode;
+}) {
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [scheduledDialog, setScheduledDialog] = useState<{
+    taskId: string;
+  } | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      setActiveId(null);
+      const { active, over } = event;
+      if (!over) return;
+
+      const activeData = active.data.current;
+      const overData = over.data.current;
+
+      // Cross-section drop (onto sidebar)
+      if (over.id.toString().startsWith("sidebar-") && overData?.section) {
+        const targetSection = overData.section as TaskSection;
+        const taskId = active.id as string;
+
+        if (
+          targetSection === "SCHEDULED" &&
+          activeData?.scheduledDate == null
+        ) {
+          setScheduledDialog({ taskId });
+          return;
+        }
+
+        await moveTask(taskId, targetSection);
+        return;
+      }
+
+      // Within-list reorder
+      if (overData?.sortableIds && activeData?.section === overData?.section) {
+        const ids = overData.sortableIds as string[];
+        await reorderTasks(activeData!.section as TaskSection, ids);
+      }
+    },
+    []
+  );
+
+  const handleScheduledConfirm = useCallback(
+    async (date: Date) => {
+      if (scheduledDialog) {
+        await moveTask(scheduledDialog.taskId, "SCHEDULED", date);
+        setScheduledDialog(null);
+      }
+    },
+    [scheduledDialog]
+  );
+
+  return (
+    <DndContext
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex h-screen overflow-hidden">
+        <GtdSidebar
+          projects={projects}
+          inboxCount={inboxCount}
+          onAddProject={() => setProjectDialogOpen(true)}
+        />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="border-b bg-background px-6 py-3">
+            <RapidEntry />
+          </div>
+          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        </div>
+      </div>
+
+      <ProjectFormDialog
+        open={projectDialogOpen}
+        onOpenChange={setProjectDialogOpen}
+      />
+      <ScheduledDateDialog
+        open={scheduledDialog !== null}
+        onOpenChange={(open: boolean) => {
+          if (!open) setScheduledDialog(null);
+        }}
+        onConfirm={handleScheduledConfirm}
+      />
+      <DragOverlay>
+        {activeId ? (
+          <div className="rounded-md border bg-background px-4 py-2 shadow-lg">
+            Dragging...
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
