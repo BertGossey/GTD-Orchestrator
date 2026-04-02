@@ -104,7 +104,7 @@ export function ProjectHeader({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
+              className="text-red-300 focus:text-red-300"
               onClick={() => setDeleteDialogOpen(true)}
             >
               Delete project
@@ -126,7 +126,7 @@ export function ProjectHeader({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-red-300 text-white hover:bg-red-400"
             >
               Delete
             </AlertDialogAction>
