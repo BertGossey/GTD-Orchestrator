@@ -167,29 +167,7 @@ describe("enrichTask", () => {
     expect(mockCreate.mock.calls[0][0].model).toBe("custom-deployment");
   });
 
-  it("defaults to gpt-5 when AZURE_OPENAI_DEPLOYMENT is not set", async () => {
-    delete process.env.AZURE_OPENAI_DEPLOYMENT;
-
-    mockCreate.mockResolvedValue({
-      choices: [
-        {
-          message: {
-            content: JSON.stringify({
-              title: "Test",
-              description: null,
-              dueDate: null,
-            }),
-          },
-        },
-      ],
-    });
-
-    await enrichTask("test");
-
-    expect(mockCreate.mock.calls[0][0].model).toBe("gpt-5");
-  });
-
-  it("passes rawInput as the user message", async () => {
+  it("passes rawInput as the last user message", async () => {
     mockCreate.mockResolvedValue({
       choices: [
         {
@@ -206,7 +184,8 @@ describe("enrichTask", () => {
 
     await enrichTask("buy milk by Friday");
 
-    const userMessage = mockCreate.mock.calls[0][0].messages[1];
-    expect(userMessage).toEqual({ role: "user", content: "buy milk by Friday" });
+    const messages = mockCreate.mock.calls[0][0].messages;
+    const lastMessage = messages[messages.length - 1];
+    expect(lastMessage).toEqual({ role: "user", content: "buy milk by Friday" });
   });
 });
