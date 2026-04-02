@@ -70,6 +70,7 @@ export function TaskRow({
         <button
           {...attributes}
           {...listeners}
+          suppressHydrationWarning
           className="cursor-grab touch-none text-muted-foreground hover:text-foreground"
         >
           <GripVertical className="size-4" />
