@@ -23,14 +23,16 @@ export async function enrichTask(
   projects?: ProjectInput[]
 ): Promise<EnrichmentResult> {
   const client = getClient();
-  const today = new Date().toISOString().split("T")[0];
+  // Use local timezone to avoid date shifts
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   // Next Friday strictly after today (never today itself, even if today is Friday)
-  const dayOfWeek = new Date().getUTCDay();
+  const dayOfWeek = now.getDay();
   const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
-  const fridayDate = new Date();
-  fridayDate.setUTCDate(fridayDate.getUTCDate() + daysUntilFriday);
-  const nextFriday = fridayDate.toISOString().split("T")[0];
+  const fridayDate = new Date(now);
+  fridayDate.setDate(now.getDate() + daysUntilFriday);
+  const nextFriday = `${fridayDate.getFullYear()}-${String(fridayDate.getMonth() + 1).padStart(2, "0")}-${String(fridayDate.getDate()).padStart(2, "0")}`;
 
   const projectsSection =
     projects && projects.length > 0

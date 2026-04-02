@@ -10,7 +10,11 @@ export function groupTasksByDate(
   const groups = new Map<string, TaskWithProject[]>();
   for (const task of tasks) {
     if (!task.scheduledDate) continue;
-    const dateKey = task.scheduledDate.toISOString().split("T")[0];
+    // Use local timezone to avoid date shifts when grouping
+    const year = task.scheduledDate.getFullYear();
+    const month = String(task.scheduledDate.getMonth() + 1).padStart(2, "0");
+    const day = String(task.scheduledDate.getDate()).padStart(2, "0");
+    const dateKey = `${year}-${month}-${day}`;
     const group = groups.get(dateKey) ?? [];
     group.push(task);
     groups.set(dateKey, group);
@@ -57,11 +61,11 @@ export default async function ScheduledPage() {
             <div key={dateKey}>
               <div
                 className={cn(
-                  "border-l-2 px-3 py-2 rounded-sm text-sm font-medium mb-2",
+                  "border border-l-2 px-3 py-2 rounded-sm text-sm font-semibold mb-2 bg-muted/20 text-foreground",
                   index > 0 && "mt-4",
                   isWeekend(dateKey)
-                    ? "border-muted-foreground/30 bg-muted/20 text-muted-foreground"
-                    : "border-primary bg-primary/5 text-foreground"
+                    ? "border-green-100 border-l-green-300"
+                    : "border-red-100 border-l-red-300"
                 )}
               >
                 {formatDate(dateKey)}

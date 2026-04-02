@@ -143,7 +143,8 @@ describe("enrichTask", () => {
 
     await enrichTask("test task");
 
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const systemMessage = mockCreate.mock.calls[0][0].messages[0];
     expect(systemMessage.content).toContain(`Today is ${today}`);
   });
@@ -239,7 +240,8 @@ describe("enrichTask", () => {
     }>;
     const firstAssistantMsg = messages.find((m) => m.role === "assistant")!;
     const parsed = JSON.parse(firstAssistantMsg.content);
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     // The first assistant example is for a Friday deadline — must be a future date, never today
     expect(parsed.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(parsed.dueDate > today).toBe(true);
