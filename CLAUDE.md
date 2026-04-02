@@ -16,7 +16,7 @@ GTD Orchestrator — a **Next.js + TypeScript** web app implementing the Getting
 ## Important Commands
 
 ```bash
-npm run dev          # Start dev server (localhost:3000)
+npm run dev          # Start dev server (localhost:3003)
 npm run build        # Production build
 npm run lint         # ESLint (flat config, next/core-web-vitals + typescript)
 npm run start        # Serve production build
@@ -43,7 +43,7 @@ npx shadcn@latest add <component>  # Add a shadcn/ui component
 - **Driver adapter**: Uses `@prisma/adapter-pg` (not a direct Prisma connection URL). The adapter is configured in `src/lib/db.ts`.
 - **Database singleton** at `src/lib/db.ts` — always import `db` from here, never instantiate `PrismaClient` directly.
 - Import PrismaClient from `@/generated/prisma/client` (not `@/generated/prisma` — Prisma v7 has no index file).
-- Supabase PostgreSQL — `DATABASE_URL` for the connection, `DIRECT_URL` for migrations.
+- Supabase PostgreSQL — connection via `DATABASE_URL` env var.
 
 ### Authentication
 - **NextAuth.js v5** configured in `src/lib/auth.ts`. Exports `{ handlers, auth, signIn, signOut }`.
@@ -71,7 +71,6 @@ npx shadcn@latest add <component>  # Add a shadcn/ui component
 ## Environment Variables
 
 Copy `.env.example` to `.env.local` and fill in values. Required:
-- `DATABASE_URL` — Supabase pooled connection string
-- `DIRECT_URL` — Supabase direct connection string
+- `DATABASE_URL` — Supabase PostgreSQL connection string
 - `NEXTAUTH_SECRET` — generate with `openssl rand -base64 32`
-- `NEXTAUTH_URL` — app URL (`http://localhost:3000` for dev)
+- `NEXTAUTH_URL` — app URL (`http://localhost:3003` for dev)

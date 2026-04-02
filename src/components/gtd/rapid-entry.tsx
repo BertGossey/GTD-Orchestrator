@@ -29,7 +29,7 @@ export function RapidEntry() {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Rapid Entry \u2014 type here and hit enter / or esc"
+        placeholder="Rapid Entry — type here and hit enter / or esc"
         disabled={isPending}
         className="h-10 pr-10"
       />

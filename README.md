@@ -38,10 +38,8 @@ npm install
 ### 3. Get Connection Strings
 
 1. In your Supabase project dashboard, go to **Settings > Database**
-2. Scroll to **Connection string** and copy from the **URI** tab:
-   - **Transaction pooler** (port 6543) — use as `DATABASE_URL`
-   - **Session pooler** or **Direct connection** (port 5432) — use as `DIRECT_URL`
-3. Replace `[YOUR-PASSWORD]` in each string with your database password
+2. Scroll to **Connection string**, select the **Session pooler** tab, and copy the **URI**
+3. Replace `[YOUR-PASSWORD]` with your database password — use this as `DATABASE_URL`
 
 ### 4. Configure Environment Variables
 
@@ -53,12 +51,11 @@ Fill in `.env.local`:
 
 ```env
 # Supabase PostgreSQL
-DATABASE_URL="postgresql://postgres.xxxx:[YOUR-PASSWORD]@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
-DIRECT_URL="postgresql://postgres:[YOUR-PASSWORD]@db.xxxx.supabase.co:5432/postgres"
+DATABASE_URL="postgresql://postgres.xxxx:[YOUR-PASSWORD]@aws-0-xx-xxxx-x.pooler.supabase.com:5432/postgres"
 
 # NextAuth.js
 NEXTAUTH_SECRET="<generate with command below>"
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL="http://localhost:3003"
 
 # Azure OpenAI (optional — app works without it, tasks just won't be AI-enriched)
 AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com"
@@ -94,12 +91,12 @@ Opens a browser GUI at `localhost:5555` where you can inspect all tables.
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to the Inbox.
+Open [http://localhost:3003](http://localhost:3003) — you'll be redirected to the Inbox.
 
 ## Scripts
 
 ```bash
-npm run dev          # Start dev server (localhost:3000)
+npm run dev          # Start dev server (localhost:3003)
 npm run build        # Production build
 npm run start        # Serve production build
 npm run lint         # ESLint
