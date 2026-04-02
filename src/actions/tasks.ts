@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { enrichTask } from "@/lib/ai";
+import { getActiveProjects } from "@/actions/projects";
 import type { TaskSection } from "@/generated/prisma/client";
 
 export async function createTask(rawInput: string) {
@@ -16,12 +17,24 @@ export async function createTask(rawInput: string) {
   let title = rawInput;
   let description: string | null = null;
   let dueDate: Date | null = null;
+  let projectId: string | null = null;
 
   try {
-    const enriched = await enrichTask(rawInput);
+    const activeProjects = await getActiveProjects();
+    const projectsForEnrichment =
+      activeProjects.length > 0
+        ? activeProjects.map((p) => ({
+            id: p.id,
+            title: p.title,
+            description: p.description ?? null,
+          }))
+        : undefined;
+
+    const enriched = await enrichTask(rawInput, projectsForEnrichment);
     title = enriched.title;
     description = enriched.description;
     dueDate = enriched.dueDate ? new Date(enriched.dueDate) : null;
+    projectId = enriched.projectId;
   } catch (error) {
     console.error("Task enrichment failed:", error);
   }
@@ -32,6 +45,7 @@ export async function createTask(rawInput: string) {
       title,
       description,
       dueDate,
+      projectId,
       section: "INBOX",
       sortOrder: nextOrder,
     },

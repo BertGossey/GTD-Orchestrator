@@ -20,8 +20,13 @@ vi.mock("@/lib/ai", () => ({
   enrichTask: vi.fn(),
 }));
 
+vi.mock("@/actions/projects", () => ({
+  getActiveProjects: vi.fn(),
+}));
+
 import { db } from "@/lib/db";
 import { enrichTask } from "@/lib/ai";
+import { getActiveProjects } from "@/actions/projects";
 import {
   createTask,
   updateTask,
@@ -36,6 +41,7 @@ import {
 describe("createTask", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getActiveProjects).mockResolvedValue([] as never);
   });
 
   it("creates a task with AI-enriched fields", async () => {
@@ -46,19 +52,21 @@ describe("createTask", () => {
       title: "Buy groceries",
       description: "Get milk and eggs",
       dueDate: "2026-04-05",
+      projectId: null,
     });
     const mockTask = { id: "1", title: "Buy groceries" };
     vi.mocked(db.task.create).mockResolvedValue(mockTask as never);
 
     const result = await createTask("buy groceries tomorrow");
 
-    expect(enrichTask).toHaveBeenCalledWith("buy groceries tomorrow");
+    expect(enrichTask).toHaveBeenCalledWith("buy groceries tomorrow", undefined);
     expect(db.task.create).toHaveBeenCalledWith({
       data: {
         rawInput: "buy groceries tomorrow",
         title: "Buy groceries",
         description: "Get milk and eggs",
         dueDate: new Date("2026-04-05"),
+        projectId: null,
         section: "INBOX",
         sortOrder: 3,
       },
@@ -75,6 +83,7 @@ describe("createTask", () => {
       title: "Test",
       description: null,
       dueDate: null,
+      projectId: null,
     });
     vi.mocked(db.task.create).mockResolvedValue({ id: "1" } as never);
 
@@ -102,6 +111,7 @@ describe("createTask", () => {
         title: "my raw task",
         description: null,
         dueDate: null,
+        projectId: null,
         section: "INBOX",
         sortOrder: 0,
       },
@@ -116,6 +126,7 @@ describe("createTask", () => {
       title: "No date task",
       description: null,
       dueDate: null,
+      projectId: null,
     });
     vi.mocked(db.task.create).mockResolvedValue({ id: "1" } as never);
 
@@ -124,6 +135,65 @@ describe("createTask", () => {
     expect(db.task.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ dueDate: null }),
+      })
+    );
+  });
+
+  it("passes active projects to enrichTask when projects exist", async () => {
+    const mockProjects = [
+      { id: "proj-1", title: "Work", description: "Work tasks", status: "ACTIVE", createdAt: new Date() },
+    ];
+    vi.mocked(getActiveProjects).mockResolvedValue(mockProjects as never);
+    vi.mocked(db.task.aggregate).mockResolvedValue({ _max: { sortOrder: null } } as never);
+    vi.mocked(enrichTask).mockResolvedValue({
+      title: "Test",
+      description: null,
+      dueDate: null,
+      projectId: "proj-1",
+    });
+    vi.mocked(db.task.create).mockResolvedValue({ id: "1" } as never);
+
+    await createTask("fix the login bug");
+
+    expect(enrichTask).toHaveBeenCalledWith("fix the login bug", [
+      { id: "proj-1", title: "Work", description: "Work tasks" },
+    ]);
+  });
+
+  it("passes undefined to enrichTask when no active projects", async () => {
+    vi.mocked(getActiveProjects).mockResolvedValue([] as never);
+    vi.mocked(db.task.aggregate).mockResolvedValue({ _max: { sortOrder: null } } as never);
+    vi.mocked(enrichTask).mockResolvedValue({
+      title: "Test",
+      description: null,
+      dueDate: null,
+      projectId: null,
+    });
+    vi.mocked(db.task.create).mockResolvedValue({ id: "1" } as never);
+
+    await createTask("buy milk");
+
+    expect(enrichTask).toHaveBeenCalledWith("buy milk", undefined);
+  });
+
+  it("saves projectId returned from enrichment", async () => {
+    vi.mocked(getActiveProjects).mockResolvedValue([
+      { id: "proj-1", title: "Work", description: null, status: "ACTIVE", createdAt: new Date() },
+    ] as never);
+    vi.mocked(db.task.aggregate).mockResolvedValue({ _max: { sortOrder: null } } as never);
+    vi.mocked(enrichTask).mockResolvedValue({
+      title: "Fix bug",
+      description: null,
+      dueDate: null,
+      projectId: "proj-1",
+    });
+    vi.mocked(db.task.create).mockResolvedValue({ id: "1" } as never);
+
+    await createTask("fix the login bug");
+
+    expect(db.task.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ projectId: "proj-1" }),
       })
     );
   });
