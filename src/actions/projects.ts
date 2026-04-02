@@ -48,3 +48,12 @@ export async function getProjectWithTasks(id: string) {
     },
   });
 }
+
+export async function deleteProject(id: string) {
+  await db.project.delete({
+    where: { id },
+  });
+
+  revalidatePath("/", "layout");
+  return { success: true };
+}
