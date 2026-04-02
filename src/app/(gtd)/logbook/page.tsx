@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
+import { Trash2 } from "lucide-react";
+import { deleteTask } from "@/actions/tasks";
 
 export default async function LogbookPage() {
   const tasks = await db.task.findMany({
@@ -39,6 +41,15 @@ export default async function LogbookPage() {
                     })}
                   </Badge>
                 )}
+                <form action={deleteTask.bind(null, task.id)}>
+                  <button
+                    type="submit"
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                    aria-label="Delete task"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </form>
               </div>
             </div>
           ))}
