@@ -3,6 +3,7 @@ import { getProjectWithTasks } from "@/actions/projects";
 import { getActiveProjects } from "@/actions/projects";
 import { TaskList } from "@/components/gtd/task-list";
 import { Separator } from "@/components/ui/separator";
+import { ProjectHeader } from "@/components/gtd/project-header";
 import type { TaskSection } from "@/generated/prisma/client";
 
 const sectionLabels: Record<string, string> = {
@@ -43,12 +44,11 @@ export default async function ProjectDetailPage({
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-semibold">{project.title}</h1>
-      {project.description && (
-        <p className="mb-4 text-sm text-muted-foreground">
-          {project.description}
-        </p>
-      )}
+      <ProjectHeader
+        id={project.id}
+        title={project.title}
+        description={project.description ?? ""}
+      />
       <Separator className="mb-6" />
 
       {tasksBySection.length === 0 ? (
