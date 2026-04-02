@@ -44,7 +44,11 @@ export function TaskDetail({
   const [projectPopoverOpen, setProjectPopoverOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  function save() {
+  function save(overrides?: {
+    dueDate?: Date | null;
+    scheduledDate?: Date | null;
+    projectId?: string | null;
+  }) {
     startTransition(async () => {
       await updateTask(task.id, {
         title: title.trim() || task.title,
@@ -53,6 +57,7 @@ export function TaskDetail({
         dueDate: dueDate ?? null,
         scheduledDate: scheduledDate ?? null,
         projectId: selectedProjectId,
+        ...overrides,
       });
     });
   }
@@ -64,7 +69,7 @@ export function TaskDetail({
       <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        onBlur={save}
+        onBlur={() => save()}
         placeholder="Title"
         className="font-medium"
       />
@@ -72,7 +77,7 @@ export function TaskDetail({
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        onBlur={save}
+        onBlur={() => save()}
         placeholder="Description"
         rows={2}
         className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -92,12 +97,12 @@ export function TaskDetail({
               selected={dueDate}
               onSelect={(date) => {
                 setDueDate(date ?? undefined);
-                setTimeout(save, 0);
+                save({ dueDate: date ?? null });
               }}
             />
             {dueDate && (
               <div className="border-t p-2">
-                <Button variant="ghost" size="sm" className="w-full gap-1" onClick={() => { setDueDate(undefined); setTimeout(save, 0); }}>
+                <Button variant="ghost" size="sm" className="w-full gap-1" onClick={() => { setDueDate(undefined); save({ dueDate: null }); }}>
                   <X className="size-3" /> Clear
                 </Button>
               </div>
@@ -118,13 +123,13 @@ export function TaskDetail({
               selected={scheduledDate}
               onSelect={(date) => {
                 setScheduledDate(date ?? undefined);
-                setTimeout(save, 0);
+                save({ scheduledDate: date ?? null });
               }}
               disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
             />
             {scheduledDate && (
               <div className="border-t p-2">
-                <Button variant="ghost" size="sm" className="w-full gap-1" onClick={() => { setScheduledDate(undefined); setTimeout(save, 0); }}>
+                <Button variant="ghost" size="sm" className="w-full gap-1" onClick={() => { setScheduledDate(undefined); save({ scheduledDate: null }); }}>
                   <X className="size-3" /> Clear
                 </Button>
               </div>
@@ -135,7 +140,7 @@ export function TaskDetail({
         <Input
           value={waitingFor}
           onChange={(e) => setWaitingFor(e.target.value)}
-          onBlur={save}
+          onBlur={() => save()}
           placeholder="Waiting for..."
           className="h-8 w-48 text-sm"
         />
@@ -155,12 +160,12 @@ export function TaskDetail({
               <CommandList>
                 <CommandEmpty>No project found.</CommandEmpty>
                 <CommandGroup>
-                  <CommandItem value="__none__" onSelect={() => { setSelectedProjectId(null); setProjectPopoverOpen(false); setTimeout(save, 0); }}>
+                  <CommandItem value="__none__" onSelect={() => { setSelectedProjectId(null); setProjectPopoverOpen(false); save({ projectId: null }); }}>
                     <Check className={cn("mr-2 size-3.5", selectedProjectId === null ? "opacity-100" : "opacity-0")} />
                     None
                   </CommandItem>
                   {projects.map((project) => (
-                    <CommandItem key={project.id} value={project.title} onSelect={() => { setSelectedProjectId(project.id); setProjectPopoverOpen(false); setTimeout(save, 0); }}>
+                    <CommandItem key={project.id} value={project.title} onSelect={() => { setSelectedProjectId(project.id); setProjectPopoverOpen(false); save({ projectId: project.id }); }}>
                       <Check className={cn("mr-2 size-3.5", selectedProjectId === project.id ? "opacity-100" : "opacity-0")} />
                       {project.title}
                     </CommandItem>
