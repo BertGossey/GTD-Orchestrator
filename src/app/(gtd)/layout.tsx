@@ -1,19 +1,26 @@
 import { GtdLayoutClient } from "@/components/gtd/gtd-layout-client";
-import { getActiveProjects } from "@/actions/projects";
-import { getInboxCount } from "@/actions/tasks";
+import { getActiveProjects, getProjectTaskCounts } from "@/actions/projects";
+import { getInboxCount, getSectionCounts } from "@/actions/tasks";
 
 export default async function GtdLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [projects, inboxCount] = await Promise.all([
+  const [projects, inboxCount, sectionCounts, projectCounts] = await Promise.all([
     getActiveProjects(),
     getInboxCount(),
+    getSectionCounts(),
+    getProjectTaskCounts(),
   ]);
 
   return (
-    <GtdLayoutClient projects={projects} inboxCount={inboxCount}>
+    <GtdLayoutClient
+      projects={projects}
+      inboxCount={inboxCount}
+      sectionCounts={sectionCounts}
+      projectCounts={projectCounts}
+    >
       {children}
     </GtdLayoutClient>
   );
