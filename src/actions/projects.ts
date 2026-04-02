@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import type { ProjectStatus } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 
 export async function createProject(title: string, description?: string) {
   const project = await db.project.create({
@@ -50,10 +51,30 @@ export async function getProjectWithTasks(id: string) {
 }
 
 export async function deleteProject(id: string) {
-  await db.project.delete({
-    where: { id },
-  });
+  try {
+    await db.project.delete({
+      where: { id },
+    });
 
-  revalidatePath("/", "layout");
-  return { success: true };
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    // Handle case where project doesn't exist
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return {
+        success: false,
+        error: "Project not found",
+      };
+    }
+
+    // Handle other database errors
+    console.error("Failed to delete project:", error);
+    return {
+      success: false,
+      error: "Failed to delete project",
+    };
+  }
 }

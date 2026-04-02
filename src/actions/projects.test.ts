@@ -8,6 +8,7 @@ vi.mock("@/lib/db", () => ({
       update: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      delete: vi.fn(),
     },
   },
 }));
@@ -18,7 +19,9 @@ import {
   updateProject,
   getActiveProjects,
   getProjectWithTasks,
+  deleteProject,
 } from "./projects";
+import { Prisma } from "@/generated/prisma/client";
 
 describe("createProject", () => {
   beforeEach(() => {
@@ -128,5 +131,64 @@ describe("getProjectWithTasks", () => {
     const result = await getProjectWithTasks("nonexistent");
 
     expect(result).toBeNull();
+  });
+});
+
+describe("deleteProject", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes project and revalidates path", async () => {
+    vi.mocked(db.project.delete).mockResolvedValue({ id: "p1" } as never);
+
+    const result = await deleteProject("p1");
+
+    expect(db.project.delete).toHaveBeenCalledWith({
+      where: { id: "p1" },
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+    expect(result).toEqual({ success: true });
+  });
+
+  it("returns error when project not found (P2025)", async () => {
+    const notFoundError = new Prisma.PrismaClientKnownRequestError(
+      "An operation failed because it depends on one or more records that were required but not found.",
+      {
+        code: "P2025",
+        clientVersion: "5.0.0",
+      }
+    );
+    vi.mocked(db.project.delete).mockRejectedValue(notFoundError);
+
+    const result = await deleteProject("nonexistent");
+
+    expect(result).toEqual({
+      success: false,
+      error: "Project not found",
+    });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("returns error and logs when database operation fails", async () => {
+    const dbError = new Error("Database connection failed");
+    vi.mocked(db.project.delete).mockRejectedValue(dbError);
+    const consoleSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const result = await deleteProject("p1");
+
+    expect(result).toEqual({
+      success: false,
+      error: "Failed to delete project",
+    });
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Failed to delete project:",
+      dbError
+    );
+    expect(revalidatePath).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
   });
 });
