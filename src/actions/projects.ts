@@ -50,6 +50,23 @@ export async function getProjectWithTasks(id: string) {
   });
 }
 
+export async function getProjectTaskCounts() {
+  const projects = await db.project.findMany({
+    where: { status: "ACTIVE" },
+    select: {
+      id: true,
+      _count: {
+        select: { tasks: true },
+      },
+    },
+  });
+
+  return projects.reduce((acc, p) => {
+    acc[p.id] = p._count.tasks;
+    return acc;
+  }, {} as Record<string, number>);
+}
+
 export async function deleteProject(id: string) {
   try {
     await db.project.delete({

@@ -20,6 +20,7 @@ import {
   getActiveProjects,
   getProjectWithTasks,
   deleteProject,
+  getProjectTaskCounts,
 } from "./projects";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -190,5 +191,44 @@ describe("deleteProject", () => {
     expect(revalidatePath).not.toHaveBeenCalled();
 
     consoleSpy.mockRestore();
+  });
+});
+
+describe("getProjectTaskCounts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns task counts for all active projects", async () => {
+    vi.mocked(db.project.findMany).mockResolvedValue([
+      { id: "p1", _count: { tasks: 5 } },
+      { id: "p2", _count: { tasks: 3 } },
+      { id: "p3", _count: { tasks: 0 } },
+    ] as never);
+
+    const result = await getProjectTaskCounts();
+
+    expect(db.project.findMany).toHaveBeenCalledWith({
+      where: { status: "ACTIVE" },
+      select: {
+        id: true,
+        _count: {
+          select: { tasks: true },
+        },
+      },
+    });
+    expect(result).toEqual({
+      p1: 5,
+      p2: 3,
+      p3: 0,
+    });
+  });
+
+  it("returns empty object when no projects exist", async () => {
+    vi.mocked(db.project.findMany).mockResolvedValue([] as never);
+
+    const result = await getProjectTaskCounts();
+
+    expect(result).toEqual({});
   });
 });
