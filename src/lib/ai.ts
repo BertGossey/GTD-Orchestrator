@@ -13,10 +13,14 @@ export type EnrichmentResult = {
   title: string;
   description: string | null;
   dueDate: string | null;
+  projectId: string | null;
 };
 
+type ProjectInput = { id: string; title: string; description: string | null };
+
 export async function enrichTask(
-  rawInput: string
+  rawInput: string,
+  projects?: ProjectInput[]
 ): Promise<EnrichmentResult> {
   const client = getClient();
   const today = new Date().toISOString().split("T")[0];
@@ -27,6 +31,13 @@ export async function enrichTask(
   const fridayDate = new Date();
   fridayDate.setUTCDate(fridayDate.getUTCDate() + daysUntilFriday);
   const nextFriday = fridayDate.toISOString().split("T")[0];
+
+  const projectsSection =
+    projects && projects.length > 0
+      ? `\nAvailable projects (only assign if clearly relevant — when uncertain, use null):\n${projects
+          .map((p, i) => `[${i + 1}] "${p.title}" — ${p.description ?? "no description"}`)
+          .join("\n")}\n- "projectIndex": 1-based integer from the list if the task clearly belongs to a project, or null if uncertain or no good match`
+      : "";
 
   const response = await client.chat.completions.create({
     model: process.env.AZURE_OPENAI_DEPLOYMENT!,
@@ -42,7 +53,7 @@ Given a task description, extract:
   2. Resolve relative dates based on today (${today})
   3. If no timeframe is mentioned, set to null
   4. If the timeframe is vague urgency only ("asap", "urgent", "soon"), set to null
-  5. If the resolved date is in the past, set to null`,
+  5. If the resolved date is in the past, set to null${projectsSection}`,
       },
       {
         role: "user",
@@ -50,7 +61,7 @@ Given a task description, extract:
       },
       {
         role: "assistant",
-        content: `{"title": "Boodschappen doen voor vrijdag", "description": "Ga naar de winkel en koop de volgende items: melk, eieren en brood. Zorg dat dit voor vrijdag gebeurt.", "dueDate": "${nextFriday}"}`,
+        content: `{"title": "Boodschappen doen voor vrijdag", "description": "Ga naar de winkel en koop de volgende items: melk, eieren en brood. Zorg dat dit voor vrijdag gebeurt.", "dueDate": "${nextFriday}", "projectIndex": null}`,
       },
       {
         role: "user",
@@ -58,7 +69,7 @@ Given a task description, extract:
       },
       {
         role: "assistant",
-        content: `{"title": "Fix login bug on website", "description": "There is a bug in the login flow on the website that needs urgent attention. Investigate the root cause, reproduce the issue, and deploy a fix as soon as possible.", "dueDate": null}`,
+        content: `{"title": "Fix login bug on website", "description": "There is a bug in the login flow on the website that needs urgent attention. Investigate the root cause, reproduce the issue, and deploy a fix as soon as possible.", "dueDate": null, "projectIndex": null}`,
       },
       {
         role: "user",
@@ -66,7 +77,7 @@ Given a task description, extract:
       },
       {
         role: "assistant",
-        content: `{"title": "Call dentist to make appointment", "description": null, "dueDate": null}`,
+        content: `{"title": "Call dentist to make appointment", "description": null, "dueDate": null, "projectIndex": null}`,
       },
       {
         role: "user",
@@ -80,13 +91,30 @@ Given a task description, extract:
   const content = response.choices[0]?.message?.content;
 
   if (!content) {
-    return { title: rawInput, description: null, dueDate: null };
+    return { title: rawInput, description: null, dueDate: null, projectId: null };
   }
 
-  const parsed = JSON.parse(content) as EnrichmentResult;
+  const parsed = JSON.parse(content) as {
+    title?: string;
+    description?: string | null;
+    dueDate?: string | null;
+    projectIndex?: number | null;
+  };
+
+  const projectIndex = parsed.projectIndex ?? null;
+  const projectId =
+    projects &&
+    projectIndex !== null &&
+    typeof projectIndex === "number" &&
+    projectIndex >= 1 &&
+    projectIndex <= projects.length
+      ? projects[projectIndex - 1].id
+      : null;
+
   return {
     title: parsed.title || rawInput,
     description: parsed.description || null,
     dueDate: parsed.dueDate || null,
+    projectId,
   };
 }

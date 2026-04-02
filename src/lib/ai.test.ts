@@ -45,6 +45,7 @@ describe("enrichTask", () => {
       title: "Buy groceries",
       description: "Get milk, eggs, and bread from the store",
       dueDate: "2026-04-05",
+      projectId: null,
     });
   });
 
@@ -98,6 +99,7 @@ describe("enrichTask", () => {
       title: "some task",
       description: null,
       dueDate: null,
+      projectId: null,
     });
   });
 
@@ -112,6 +114,7 @@ describe("enrichTask", () => {
       title: "another task",
       description: null,
       dueDate: null,
+      projectId: null,
     });
   });
 
@@ -240,5 +243,82 @@ describe("enrichTask", () => {
     // The first assistant example is for a Friday deadline — must be a future date, never today
     expect(parsed.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(parsed.dueDate > today).toBe(true);
+  });
+
+  it("returns projectId null when no projects provided", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ title: "Test", description: null, dueDate: null, projectIndex: null }) } }],
+    });
+
+    const result = await enrichTask("test task");
+
+    expect(result.projectId).toBeNull();
+  });
+
+  it("maps valid projectIndex to the matching project id", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ title: "Fix bug", description: null, dueDate: null, projectIndex: 2 }) } }],
+    });
+
+    const projects = [
+      { id: "proj-1", title: "Personal", description: null },
+      { id: "proj-2", title: "Work", description: "Work tasks" },
+    ];
+
+    const result = await enrichTask("fix the login bug", projects);
+
+    expect(result.projectId).toBe("proj-2");
+  });
+
+  it("returns projectId null when LLM returns projectIndex null with projects", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ title: "Test", description: null, dueDate: null, projectIndex: null }) } }],
+    });
+
+    const projects = [{ id: "proj-1", title: "Work", description: null }];
+
+    const result = await enrichTask("buy milk", projects);
+
+    expect(result.projectId).toBeNull();
+  });
+
+  it("returns projectId null when LLM returns out-of-range projectIndex", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ title: "Test", description: null, dueDate: null, projectIndex: 5 }) } }],
+    });
+
+    const projects = [{ id: "proj-1", title: "Work", description: null }];
+
+    const result = await enrichTask("test task", projects);
+
+    expect(result.projectId).toBeNull();
+  });
+
+  it("includes numbered project list in system prompt when projects provided", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ title: "T", description: null, dueDate: null, projectIndex: null }) } }],
+    });
+
+    const projects = [
+      { id: "proj-1", title: "Work", description: "Work tasks" },
+      { id: "proj-2", title: "Personal", description: null },
+    ];
+
+    await enrichTask("test", projects);
+
+    const systemPrompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).toContain('[1] "Work"');
+    expect(systemPrompt).toContain('[2] "Personal"');
+  });
+
+  it("does not include Available projects section when no projects provided", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ title: "T", description: null, dueDate: null }) } }],
+    });
+
+    await enrichTask("test");
+
+    const systemPrompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).not.toContain("Available projects");
   });
 });
