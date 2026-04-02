@@ -294,6 +294,18 @@ describe("enrichTask", () => {
     expect(result.projectId).toBeNull();
   });
 
+  it("returns projectId null when LLM returns projectIndex 0 (zero is not a valid 1-based index)", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ title: "Test", description: null, dueDate: null, projectIndex: 0 }) } }],
+    });
+
+    const projects = [{ id: "proj-1", title: "Work", description: null }];
+
+    const result = await enrichTask("test task", projects);
+
+    expect(result.projectId).toBeNull();
+  });
+
   it("includes numbered project list in system prompt when projects provided", async () => {
     mockCreate.mockResolvedValue({
       choices: [{ message: { content: JSON.stringify({ title: "T", description: null, dueDate: null, projectIndex: null }) } }],

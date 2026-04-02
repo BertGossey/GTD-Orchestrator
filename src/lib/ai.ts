@@ -16,7 +16,7 @@ export type EnrichmentResult = {
   projectId: string | null;
 };
 
-type ProjectInput = { id: string; title: string; description: string | null };
+export type ProjectInput = { id: string; title: string; description: string | null };
 
 export async function enrichTask(
   rawInput: string,
