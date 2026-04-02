@@ -22,8 +22,8 @@ export async function createTask(rawInput: string) {
     title = enriched.title;
     description = enriched.description;
     dueDate = enriched.dueDate ? new Date(enriched.dueDate) : null;
-  } catch {
-    // Fallback: use rawInput as title
+  } catch (error) {
+    console.error("Task enrichment failed:", error);
   }
 
   const task = await db.task.create({
@@ -142,4 +142,9 @@ export async function getTasksBySection(section: TaskSection) {
 
 export async function getInboxCount() {
   return db.task.count({ where: { section: "INBOX" } });
+}
+
+export async function deleteTask(id: string) {
+  await db.task.delete({ where: { id } });
+  revalidatePath("/logbook");
 }

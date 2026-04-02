@@ -10,6 +10,7 @@ vi.mock("@/lib/db", () => ({
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
+      delete: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -29,6 +30,7 @@ import {
   completeTask,
   getTasksBySection,
   getInboxCount,
+  deleteTask,
 } from "./tasks";
 
 describe("createTask", () => {
@@ -489,5 +491,27 @@ describe("getInboxCount", () => {
       where: { section: "INBOX" },
     });
     expect(count).toBe(5);
+  });
+});
+
+describe("deleteTask", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes the task by id", async () => {
+    vi.mocked(db.task.delete).mockResolvedValue({ id: "1" } as never);
+
+    await deleteTask("1");
+
+    expect(db.task.delete).toHaveBeenCalledWith({ where: { id: "1" } });
+  });
+
+  it("calls revalidatePath on /logbook", async () => {
+    vi.mocked(db.task.delete).mockResolvedValue({ id: "1" } as never);
+
+    await deleteTask("1");
+
+    expect(revalidatePath).toHaveBeenCalledWith("/logbook");
   });
 });
