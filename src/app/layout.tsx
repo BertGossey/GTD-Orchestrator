@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "GTD Orchestrator",
   description: "Getting Things Done methodology organizer",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
