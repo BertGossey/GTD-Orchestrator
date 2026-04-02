@@ -36,6 +36,7 @@ import {
   getTasksBySection,
   getInboxCount,
   deleteTask,
+  getSectionCounts,
 } from "./tasks";
 
 describe("createTask", () => {
@@ -583,5 +584,32 @@ describe("deleteTask", () => {
     await deleteTask("1");
 
     expect(revalidatePath).toHaveBeenCalledWith("/logbook");
+  });
+});
+
+describe("getSectionCounts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns counts for all action sections", async () => {
+    vi.mocked(db.task.count)
+      .mockResolvedValueOnce(5) // NEXT
+      .mockResolvedValueOnce(3) // WAITING
+      .mockResolvedValueOnce(7) // SCHEDULED
+      .mockResolvedValueOnce(2); // SOMEDAY
+
+    const result = await getSectionCounts();
+
+    expect(db.task.count).toHaveBeenCalledWith({ where: { section: "NEXT" } });
+    expect(db.task.count).toHaveBeenCalledWith({ where: { section: "WAITING" } });
+    expect(db.task.count).toHaveBeenCalledWith({ where: { section: "SCHEDULED" } });
+    expect(db.task.count).toHaveBeenCalledWith({ where: { section: "SOMEDAY" } });
+    expect(result).toEqual({
+      next: 5,
+      waiting: 3,
+      scheduled: 7,
+      someday: 2,
+    });
   });
 });

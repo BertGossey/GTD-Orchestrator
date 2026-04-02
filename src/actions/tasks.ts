@@ -158,6 +158,17 @@ export async function getInboxCount() {
   return db.task.count({ where: { section: "INBOX" } });
 }
 
+export async function getSectionCounts() {
+  const [next, waiting, scheduled, someday] = await Promise.all([
+    db.task.count({ where: { section: "NEXT" } }),
+    db.task.count({ where: { section: "WAITING" } }),
+    db.task.count({ where: { section: "SCHEDULED" } }),
+    db.task.count({ where: { section: "SOMEDAY" } }),
+  ]);
+
+  return { next, waiting, scheduled, someday };
+}
+
 export async function deleteTask(id: string) {
   await db.task.delete({ where: { id } });
   revalidatePath("/logbook");
