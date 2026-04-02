@@ -4,7 +4,7 @@ import { TaskList } from "@/components/gtd/task-list";
 import { cn } from "@/lib/utils";
 import type { TaskWithProject } from "@/types/gtd";
 
-function groupTasksByDate(
+export function groupTasksByDate(
   tasks: TaskWithProject[]
 ): { dateKey: string; tasks: TaskWithProject[] }[] {
   const groups = new Map<string, TaskWithProject[]>();
@@ -15,13 +15,13 @@ function groupTasksByDate(
     group.push(task);
     groups.set(dateKey, group);
   }
-  return Array.from(groups.entries()).map(([dateKey, tasks]) => ({
+  return Array.from(groups.entries()).map(([dateKey, groupTasks]) => ({
     dateKey,
-    tasks,
+    tasks: groupTasks,
   }));
 }
 
-function formatDate(dateKey: string): string {
+export function formatDate(dateKey: string): string {
   // Use noon UTC to avoid local-timezone date shifts when formatting
   return new Date(`${dateKey}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "long",
@@ -30,7 +30,7 @@ function formatDate(dateKey: string): string {
   });
 }
 
-function isWeekend(dateKey: string): boolean {
+export function isWeekend(dateKey: string): boolean {
   const day = new Date(dateKey).getUTCDay();
   return day === 0 || day === 6;
 }
