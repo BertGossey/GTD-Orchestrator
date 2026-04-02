@@ -22,10 +22,10 @@ export async function enrichTask(
   const today = new Date().toISOString().split("T")[0];
 
   // Next Friday strictly after today (never today itself, even if today is Friday)
-  const todayDate = new Date();
-  const daysUntilFriday = (5 - todayDate.getDay() + 7) % 7 || 7;
-  const fridayDate = new Date(todayDate);
-  fridayDate.setDate(todayDate.getDate() + daysUntilFriday);
+  const dayOfWeek = new Date().getUTCDay();
+  const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
+  const fridayDate = new Date();
+  fridayDate.setUTCDate(fridayDate.getUTCDate() + daysUntilFriday);
   const nextFriday = fridayDate.toISOString().split("T")[0];
 
   const response = await client.chat.completions.create({
