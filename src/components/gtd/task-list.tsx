@@ -12,13 +12,15 @@ export function TaskList({
   tasks,
   projects,
   sectionId,
+  droppableId,
 }: {
   tasks: TaskWithProject[];
   projects: { id: string; title: string }[];
   sectionId: string;
+  droppableId?: string;
 }) {
   const { setNodeRef } = useDroppable({
-    id: `list-${sectionId}`,
+    id: droppableId ?? `list-${sectionId}`,
     data: {
       section: sectionId,
       sortableIds: tasks.map((t) => t.id),
