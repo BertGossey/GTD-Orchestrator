@@ -50,8 +50,13 @@ export function ProjectHeader({
 
   function handleDelete() {
     startTransition(async () => {
-      await deleteProject(id);
-      router.push("/");
+      const result = await deleteProject(id);
+      if (result.success) {
+        router.push("/");
+      } else {
+        console.error("Failed to delete project:", result.error);
+        // Keep dialog open - user can try again or cancel
+      }
     });
   }
 
@@ -93,7 +98,7 @@ export function ProjectHeader({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Project options">
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
