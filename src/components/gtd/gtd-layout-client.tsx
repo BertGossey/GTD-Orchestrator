@@ -19,10 +19,14 @@ import type { Project, TaskSection } from "@/generated/prisma/client";
 export function GtdLayoutClient({
   projects,
   inboxCount,
+  sectionCounts,
+  projectCounts,
   children,
 }: {
   projects: Project[];
   inboxCount: number;
+  sectionCounts: { next: number; waiting: number; scheduled: number; someday: number };
+  projectCounts: Record<string, number>;
   children: React.ReactNode;
 }) {
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
@@ -95,6 +99,8 @@ export function GtdLayoutClient({
         <GtdSidebar
           projects={projects}
           inboxCount={inboxCount}
+          sectionCounts={sectionCounts}
+          projectCounts={projectCounts}
           onAddProject={() => setProjectDialogOpen(true)}
         />
         <div className="flex flex-1 flex-col overflow-hidden">
