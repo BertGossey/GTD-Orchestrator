@@ -21,12 +21,28 @@ export async function enrichTask(
   const client = getClient();
   const today = new Date().toISOString().split("T")[0];
 
+  // Next Friday strictly after today (never today itself, even if today is Friday)
+  const todayDate = new Date();
+  const daysUntilFriday = (5 - todayDate.getDay() + 7) % 7 || 7;
+  const fridayDate = new Date(todayDate);
+  fridayDate.setDate(todayDate.getDate() + daysUntilFriday);
+  const nextFriday = fridayDate.toISOString().split("T")[0];
+
   const response = await client.chat.completions.create({
     model: process.env.AZURE_OPENAI_DEPLOYMENT!,
     messages: [
       {
         role: "system",
-        content: `You are a task assistant for a GTD app. Today is ${today}. Respond with json only.`,
+        content: `You are a task assistant for a GTD app. Today is ${today}. Respond with JSON only.
+Given a task description, extract:
+- "title": concise, action-oriented title (max 80 chars)
+- "description": expanded context from the input, or null if nothing to add
+- "dueDate": ISO date string (YYYY-MM-DD), following these rules:
+  1. Only set if the user explicitly mentions a date, day, or timeframe
+  2. Resolve relative dates based on today (${today})
+  3. If no timeframe is mentioned, set to null
+  4. If the timeframe is vague urgency only ("asap", "urgent", "soon"), set to null
+  5. If the resolved date is in the past, set to null`,
       },
       {
         role: "user",
@@ -34,7 +50,7 @@ export async function enrichTask(
       },
       {
         role: "assistant",
-        content: `{"title": "Boodschappen doen voor vrijdag", "description": "Ga naar de winkel en koop de volgende items: melk, eieren en brood. Zorg dat dit voor vrijdag gebeurt.", "dueDate": "${today}"}`,
+        content: `{"title": "Boodschappen doen voor vrijdag", "description": "Ga naar de winkel en koop de volgende items: melk, eieren en brood. Zorg dat dit voor vrijdag gebeurt.", "dueDate": "${nextFriday}"}`,
       },
       {
         role: "user",
@@ -43,6 +59,14 @@ export async function enrichTask(
       {
         role: "assistant",
         content: `{"title": "Fix login bug on website", "description": "There is a bug in the login flow on the website that needs urgent attention. Investigate the root cause, reproduce the issue, and deploy a fix as soon as possible.", "dueDate": null}`,
+      },
+      {
+        role: "user",
+        content: "call dentist to make appointment",
+      },
+      {
+        role: "assistant",
+        content: `{"title": "Call dentist to make appointment", "description": null, "dueDate": null}`,
       },
       {
         role: "user",

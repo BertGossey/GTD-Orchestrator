@@ -188,4 +188,57 @@ describe("enrichTask", () => {
     const lastMessage = messages[messages.length - 1];
     expect(lastMessage).toEqual({ role: "user", content: "buy milk by Friday" });
   });
+
+  it("system prompt includes due date rules for vague urgency and past dates", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              title: "Test",
+              description: null,
+              dueDate: null,
+            }),
+          },
+        },
+      ],
+    });
+
+    await enrichTask("test");
+
+    const systemPrompt = mockCreate.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).toContain("past");
+    expect(systemPrompt).toContain("asap");
+    expect(systemPrompt).toContain("urgent");
+    expect(systemPrompt).toContain("soon");
+  });
+
+  it("first few-shot assistant example uses a future Friday date, not today", async () => {
+    mockCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              title: "Test",
+              description: null,
+              dueDate: null,
+            }),
+          },
+        },
+      ],
+    });
+
+    await enrichTask("test");
+
+    const messages = mockCreate.mock.calls[0][0].messages as Array<{
+      role: string;
+      content: string;
+    }>;
+    const firstAssistantMsg = messages.find((m) => m.role === "assistant")!;
+    const parsed = JSON.parse(firstAssistantMsg.content);
+    const today = new Date().toISOString().split("T")[0];
+    // The first assistant example is for a Friday deadline — must be a future date, never today
+    expect(parsed.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(parsed.dueDate > today).toBe(true);
+  });
 });
