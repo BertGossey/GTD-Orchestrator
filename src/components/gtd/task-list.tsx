@@ -6,6 +6,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { TaskRow } from "@/components/gtd/task-row";
+import { extractDateKey } from "@/actions/tasks";
 import type { TaskWithProject } from "@/types/gtd";
 
 export function TaskList({
@@ -19,11 +20,18 @@ export function TaskList({
   sectionId: string;
   droppableId?: string;
 }) {
+  // Extract dateKey for SCHEDULED section
+  const dateKey =
+    sectionId === "SCHEDULED" && droppableId
+      ? droppableId.replace("SCHEDULED-", "")
+      : undefined;
+
   const { setNodeRef } = useDroppable({
     id: droppableId ?? `list-${sectionId}`,
     data: {
       section: sectionId,
       sortableIds: tasks.map((t) => t.id),
+      dateKey,
     },
   });
 

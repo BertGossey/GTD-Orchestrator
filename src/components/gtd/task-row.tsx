@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { TaskDetail } from "@/components/gtd/task-detail";
-import { completeTask } from "@/actions/tasks";
+import { completeTask, extractDateKey } from "@/actions/tasks";
 import type { TaskWithProject } from "@/types/gtd";
 
 export function TaskRow({
@@ -23,6 +23,9 @@ export function TaskRow({
   const [expanded, setExpanded] = useState(false);
   const [isCompleting, startTransition] = useTransition();
 
+  const dateKey =
+    task.section === "SCHEDULED" ? extractDateKey(task.scheduledDate) : undefined;
+
   const {
     attributes,
     listeners,
@@ -35,6 +38,7 @@ export function TaskRow({
     data: {
       section: task.section,
       scheduledDate: task.scheduledDate,
+      dateKey,
     },
   });
 

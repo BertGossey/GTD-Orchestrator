@@ -14,7 +14,7 @@ import { GtdSidebar } from "@/components/gtd/sidebar";
 import { RapidEntry } from "@/components/gtd/rapid-entry";
 import { ProjectFormDialog } from "@/components/gtd/project-form";
 import { ScheduledDateDialog } from "@/components/gtd/scheduled-date-dialog";
-import { moveTask, reorderTasks } from "@/actions/tasks";
+import { moveTask, reorderTasks, reorderScheduledTasks, extractDateKey } from "@/actions/tasks";
 import type { Project, TaskSection } from "@/generated/prisma/client";
 
 export function GtdLayoutClient({
@@ -67,6 +67,57 @@ export function GtdLayoutClient({
         return;
       }
 
+      // SCHEDULED section handling - within-day and cross-day
+      if (
+        activeData?.section === "SCHEDULED" &&
+        overData?.section === "SCHEDULED"
+      ) {
+        const activeDateKey = activeData.dateKey;
+        const overDateKey = overData.dateKey;
+
+        if (!activeDateKey || !overDateKey) return;
+
+        // Within-day reorder (same date)
+        if (activeDateKey === overDateKey) {
+          const dayTasks = tasks.filter(
+            (t) =>
+              t.scheduledDate && extractDateKey(t.scheduledDate) === activeDateKey
+          );
+          const taskIds = dayTasks.map((t) => t.id);
+          const oldIndex = taskIds.indexOf(active.id as string);
+          const newIndex = taskIds.indexOf(over.id as string);
+
+          if (oldIndex === -1 || newIndex === -1) return;
+          if (oldIndex === newIndex) return;
+
+          await reorderScheduledTasks(
+            active.id as string,
+            activeDateKey,
+            newIndex,
+            true // sameDayMove
+          );
+          return;
+        }
+
+        // Cross-day move (different dates)
+        if (activeDateKey !== overDateKey) {
+          const targetDayTasks = tasks.filter(
+            (t) =>
+              t.scheduledDate && extractDateKey(t.scheduledDate) === overDateKey
+          );
+          const newIndex = targetDayTasks.findIndex((t) => t.id === over.id);
+          const insertIndex = newIndex !== -1 ? newIndex : targetDayTasks.length;
+
+          await reorderScheduledTasks(
+            active.id as string,
+            overDateKey,
+            insertIndex,
+            false // sameDayMove
+          );
+          return;
+        }
+      }
+
       // Within-list reorder
       if (overData?.sortableIds && activeData?.section === overData?.section) {
         const ids = overData.sortableIds as string[];
@@ -79,16 +130,14 @@ export function GtdLayoutClient({
         return;
       }
 
-      // Within-section reorder
+      // Within-section reorder (non-SCHEDULED sections)
       if (
         activeData?.section &&
         overData?.section &&
-        activeData.section === overData.section
+        activeData.section === overData.section &&
+        activeData.section !== "SCHEDULED"
       ) {
         const section = activeData.section as TaskSection;
-
-        // Skip reordering for SCHEDULED section (ordered by date, not sortOrder)
-        if (section === "SCHEDULED") return;
 
         // Get current task IDs for this section
         const sectionTasks = tasks.filter((t) => t.section === section);
