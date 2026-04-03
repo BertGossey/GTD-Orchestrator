@@ -6,9 +6,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ChevronDown, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, extractDateKey } from "@/lib/utils";
 import { TaskDetail } from "@/components/gtd/task-detail";
-import { completeTask, extractDateKey } from "@/actions/tasks";
+import { completeTask } from "@/actions/tasks";
 import type { TaskWithProject } from "@/types/gtd";
 
 export function TaskRow({

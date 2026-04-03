@@ -14,7 +14,8 @@ import { GtdSidebar } from "@/components/gtd/sidebar";
 import { RapidEntry } from "@/components/gtd/rapid-entry";
 import { ProjectFormDialog } from "@/components/gtd/project-form";
 import { ScheduledDateDialog } from "@/components/gtd/scheduled-date-dialog";
-import { moveTask, reorderTasks, reorderScheduledTasks, extractDateKey } from "@/actions/tasks";
+import { moveTask, reorderTasks, reorderScheduledTasks } from "@/actions/tasks";
+import { extractDateKey } from "@/lib/utils";
 import type { Project, TaskSection } from "@/generated/prisma/client";
 
 export function GtdLayoutClient({
