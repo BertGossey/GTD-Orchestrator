@@ -140,6 +140,118 @@ export async function reorderTasks(
   revalidatePath("/", "layout");
 }
 
+/**
+ * Reorder a scheduled task relative to another scheduled task.
+ * Handles both within-day and cross-day reordering.
+ *
+ * Within same day: preserves the moved task's time, renumbers sortOrder.
+ * Across days: adopts target task's time, moves to target day.
+ */
+export async function reorderScheduledTasks(
+  movedTaskId: string,
+  targetTaskId: string
+) {
+  // Fetch the moved task's current scheduledDate
+  const movedTask = await db.task.findUniqueOrThrow({
+    where: { id: movedTaskId },
+    select: { scheduledDate: true },
+  });
+
+  if (!movedTask.scheduledDate) {
+    throw new Error("Moved task has no scheduledDate");
+  }
+
+  // Fetch the target task's scheduledDate to determine target day
+  const targetTask = await db.task.findUniqueOrThrow({
+    where: { id: targetTaskId },
+    select: { scheduledDate: true },
+  });
+
+  if (!targetTask.scheduledDate) {
+    throw new Error("Target task has no scheduledDate");
+  }
+
+  const movedDateKey = extractDateKey(movedTask.scheduledDate);
+  const targetDateKey = extractDateKey(targetTask.scheduledDate);
+  const sameDay = movedDateKey === targetDateKey;
+
+  // Calculate target day boundaries (start of day, start of next day)
+  const targetDate = targetTask.scheduledDate;
+  const targetDayStart = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate(),
+    0,
+    0,
+    0,
+    0
+  );
+  const targetDayEnd = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate() + 1,
+    0,
+    0,
+    0,
+    0
+  );
+
+  // Fetch all tasks in the target day
+  const tasksInTargetDay = await db.task.findMany({
+    where: {
+      section: "SCHEDULED",
+      scheduledDate: {
+        gte: targetDayStart,
+        lt: targetDayEnd,
+      },
+    },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true },
+  });
+
+  // Remove movedTask from the list if it's already in the target day
+  const filteredTasks = tasksInTargetDay.filter((t) => t.id !== movedTaskId);
+
+  // Find the target task's index in the filtered list
+  const targetIndex = filteredTasks.findIndex((t) => t.id === targetTaskId);
+  if (targetIndex === -1) {
+    throw new Error("Target task not found in target day");
+  }
+
+  // Insert movedTask after targetTask
+  const reorderedIds = [
+    ...filteredTasks.slice(0, targetIndex + 1),
+    { id: movedTaskId },
+    ...filteredTasks.slice(targetIndex + 1),
+  ].map((t) => t.id);
+
+  // Build updates array
+  const updates = reorderedIds.map((id, index) => {
+    if (id === movedTaskId) {
+      // For the moved task, update both sortOrder and possibly scheduledDate
+      const newScheduledDate = sameDay
+        ? movedTask.scheduledDate
+        : targetTask.scheduledDate;
+      return db.task.update({
+        where: { id },
+        data: {
+          sortOrder: index,
+          scheduledDate: newScheduledDate,
+        },
+      });
+    } else {
+      // For other tasks, only update sortOrder
+      return db.task.update({
+        where: { id },
+        data: { sortOrder: index },
+      });
+    }
+  });
+
+  await db.$transaction(updates);
+  revalidatePath("/", "layout");
+}
+
 export async function completeTask(id: string) {
   return moveTask(id, "LOGBOOK");
 }

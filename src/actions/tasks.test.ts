@@ -32,6 +32,7 @@ import {
   updateTask,
   moveTask,
   reorderTasks,
+  reorderScheduledTasks,
   completeTask,
   getTasksBySection,
   getInboxCount,
@@ -691,6 +692,239 @@ describe("getSectionCounts", () => {
       waiting: 3,
       scheduled: 7,
       someday: 2,
+    });
+  });
+});
+
+describe("reorderScheduledTasks", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reorders tasks within the same day preserving time", async () => {
+    const movedTask = {
+      id: "task-1",
+      scheduledDate: new Date(2026, 3, 15, 14, 30, 0),
+    };
+    const targetTask = {
+      id: "task-2",
+      scheduledDate: new Date(2026, 3, 15, 9, 0, 0),
+    };
+    const otherTask = {
+      id: "task-3",
+      scheduledDate: new Date(2026, 3, 15, 16, 0, 0),
+    };
+
+    vi.mocked(db.task.findUniqueOrThrow)
+      .mockResolvedValueOnce(movedTask as never)
+      .mockResolvedValueOnce(targetTask as never);
+    vi.mocked(db.task.findMany).mockResolvedValue([targetTask, otherTask] as never);
+    vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
+    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
+
+    await reorderScheduledTasks("task-1", "task-2");
+
+    expect(db.task.findUniqueOrThrow).toHaveBeenCalledWith({
+      where: { id: "task-1" },
+      select: { scheduledDate: true },
+    });
+
+    expect(db.task.findMany).toHaveBeenCalledWith({
+      where: {
+        section: "SCHEDULED",
+        scheduledDate: {
+          gte: new Date(2026, 3, 15, 0, 0, 0, 0),
+          lt: new Date(2026, 3, 16, 0, 0, 0, 0),
+        },
+      },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true },
+    });
+
+    expect(db.task.update).toHaveBeenCalledTimes(3);
+    expect(db.task.update).toHaveBeenNthCalledWith(1, {
+      where: { id: "task-2" },
+      data: { sortOrder: 0 },
+    });
+    expect(db.task.update).toHaveBeenNthCalledWith(2, {
+      where: { id: "task-1" },
+      data: {
+        sortOrder: 1,
+        scheduledDate: new Date(2026, 3, 15, 14, 30, 0),
+      },
+    });
+    expect(db.task.update).toHaveBeenNthCalledWith(3, {
+      where: { id: "task-3" },
+      data: { sortOrder: 2 },
+    });
+
+    expect(db.$transaction).toHaveBeenCalledTimes(1);
+    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it("reorders tasks across different days adopting target time", async () => {
+    const movedTask = {
+      id: "task-1",
+      scheduledDate: new Date(2026, 3, 15, 14, 30, 0),
+    };
+    const targetTask = {
+      id: "task-2",
+      scheduledDate: new Date(2026, 3, 20, 9, 0, 0),
+    };
+    const otherTask = {
+      id: "task-3",
+      scheduledDate: new Date(2026, 3, 20, 16, 0, 0),
+    };
+
+    vi.mocked(db.task.findUniqueOrThrow)
+      .mockResolvedValueOnce(movedTask as never)
+      .mockResolvedValueOnce(targetTask as never);
+    vi.mocked(db.task.findMany).mockResolvedValue([targetTask, otherTask] as never);
+    vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
+    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
+
+    await reorderScheduledTasks("task-1", "task-2");
+
+    expect(db.task.findMany).toHaveBeenCalledWith({
+      where: {
+        section: "SCHEDULED",
+        scheduledDate: {
+          gte: new Date(2026, 3, 20, 0, 0, 0, 0),
+          lt: new Date(2026, 3, 21, 0, 0, 0, 0),
+        },
+      },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true },
+    });
+
+    expect(db.task.update).toHaveBeenCalledTimes(3);
+    expect(db.task.update).toHaveBeenNthCalledWith(2, {
+      where: { id: "task-1" },
+      data: {
+        sortOrder: 1,
+        scheduledDate: new Date(2026, 3, 20, 9, 0, 0),
+      },
+    });
+  });
+
+  it("handles reordering to first position in day", async () => {
+    const movedTask = {
+      id: "task-1",
+      scheduledDate: new Date(2026, 3, 15, 14, 0, 0),
+    };
+    const firstTask = {
+      id: "task-2",
+      scheduledDate: new Date(2026, 3, 15, 9, 0, 0),
+    };
+    const secondTask = {
+      id: "task-3",
+      scheduledDate: new Date(2026, 3, 15, 16, 0, 0),
+    };
+
+    vi.mocked(db.task.findUniqueOrThrow)
+      .mockResolvedValueOnce(movedTask as never)
+      .mockResolvedValueOnce(firstTask as never);
+    vi.mocked(db.task.findMany).mockResolvedValue([firstTask, secondTask] as never);
+    vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
+    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
+
+    await reorderScheduledTasks("task-1", "task-2");
+
+    expect(db.task.update).toHaveBeenCalledTimes(3);
+    expect(db.task.update).toHaveBeenNthCalledWith(1, {
+      where: { id: "task-2" },
+      data: { sortOrder: 0 },
+    });
+    expect(db.task.update).toHaveBeenNthCalledWith(2, {
+      where: { id: "task-1" },
+      data: {
+        sortOrder: 1,
+        scheduledDate: new Date(2026, 3, 15, 14, 0, 0),
+      },
+    });
+    expect(db.task.update).toHaveBeenNthCalledWith(3, {
+      where: { id: "task-3" },
+      data: { sortOrder: 2 },
+    });
+  });
+
+  it("handles reordering to last position in day", async () => {
+    const movedTask = {
+      id: "task-1",
+      scheduledDate: new Date(2026, 3, 15, 9, 0, 0),
+    };
+    const secondTask = {
+      id: "task-2",
+      scheduledDate: new Date(2026, 3, 15, 12, 0, 0),
+    };
+    const lastTask = {
+      id: "task-3",
+      scheduledDate: new Date(2026, 3, 15, 16, 0, 0),
+    };
+
+    vi.mocked(db.task.findUniqueOrThrow)
+      .mockResolvedValueOnce(movedTask as never)
+      .mockResolvedValueOnce(lastTask as never);
+    vi.mocked(db.task.findMany).mockResolvedValue([secondTask, lastTask] as never);
+    vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
+    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
+
+    await reorderScheduledTasks("task-1", "task-3");
+
+    expect(db.task.update).toHaveBeenCalledTimes(3);
+    expect(db.task.update).toHaveBeenNthCalledWith(1, {
+      where: { id: "task-2" },
+      data: { sortOrder: 0 },
+    });
+    expect(db.task.update).toHaveBeenNthCalledWith(2, {
+      where: { id: "task-3" },
+      data: { sortOrder: 1 },
+    });
+    expect(db.task.update).toHaveBeenNthCalledWith(3, {
+      where: { id: "task-1" },
+      data: {
+        sortOrder: 2,
+        scheduledDate: new Date(2026, 3, 15, 9, 0, 0),
+      },
+    });
+  });
+
+  it("throws error when movedTaskId not found", async () => {
+    vi.mocked(db.task.findUniqueOrThrow).mockRejectedValue(new Error("Not found"));
+
+    await expect(reorderScheduledTasks("invalid-id", "task-2")).rejects.toThrow();
+  });
+
+  it("handles single task in target day", async () => {
+    const movedTask = {
+      id: "task-1",
+      scheduledDate: new Date(2026, 3, 15, 14, 0, 0),
+    };
+    const onlyTask = {
+      id: "task-2",
+      scheduledDate: new Date(2026, 3, 20, 9, 0, 0),
+    };
+
+    vi.mocked(db.task.findUniqueOrThrow)
+      .mockResolvedValueOnce(movedTask as never)
+      .mockResolvedValueOnce(onlyTask as never);
+    vi.mocked(db.task.findMany).mockResolvedValue([onlyTask] as never);
+    vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
+    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
+
+    await reorderScheduledTasks("task-1", "task-2");
+
+    expect(db.task.update).toHaveBeenCalledTimes(2);
+    expect(db.task.update).toHaveBeenNthCalledWith(1, {
+      where: { id: "task-2" },
+      data: { sortOrder: 0 },
+    });
+    expect(db.task.update).toHaveBeenNthCalledWith(2, {
+      where: { id: "task-1" },
+      data: {
+        sortOrder: 1,
+        scheduledDate: new Date(2026, 3, 20, 9, 0, 0),
+      },
     });
   });
 });
