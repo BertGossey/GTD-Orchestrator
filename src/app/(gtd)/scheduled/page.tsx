@@ -1,6 +1,6 @@
 import { getTasksBySection } from "@/actions/tasks";
 import { getActiveProjects } from "@/actions/projects";
-import { TaskList } from "@/components/gtd/task-list";
+import { TaskListWithProvider } from "@/components/gtd/task-list-with-provider";
 import { cn } from "@/lib/utils";
 import type { TaskWithProject } from "@/types/gtd";
 
@@ -70,7 +70,7 @@ export default async function ScheduledPage() {
               >
                 {formatDate(dateKey)}
               </div>
-              <TaskList
+              <TaskListWithProvider
                 tasks={dayTasks}
                 projects={projectList}
                 sectionId="SCHEDULED"

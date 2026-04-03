@@ -9,10 +9,12 @@ export function TaskListWithProvider({
   tasks,
   projects,
   sectionId,
+  droppableId,
 }: {
   tasks: TaskWithProject[];
   projects: { id: string; title: string }[];
   sectionId: string;
+  droppableId?: string;
 }) {
   const { setTasks } = useTasks();
 
@@ -20,5 +22,5 @@ export function TaskListWithProvider({
     setTasks(tasks);
   }, [tasks, setTasks]);
 
-  return <TaskList tasks={tasks} projects={projects} sectionId={sectionId} />;
+  return <TaskList tasks={tasks} projects={projects} sectionId={sectionId} droppableId={droppableId} />;
 }
