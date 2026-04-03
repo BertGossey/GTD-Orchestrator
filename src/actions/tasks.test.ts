@@ -755,7 +755,7 @@ describe("reorderScheduledTasks", () => {
       db.task.update({
         where: { id: "task-1" },
         data: {
-          scheduledDate: new Date(2026, 3, 15, 0, 0, 0),
+          scheduledDate: new Date(2026, 3, 15, 10, 0, 0),
           sortOrder: 2,
         },
       })

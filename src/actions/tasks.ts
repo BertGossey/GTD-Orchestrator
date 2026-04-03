@@ -166,20 +166,11 @@ export async function reorderScheduledTasks(
   // Parse target date
   const [year, month, day] = targetDateKey.split("-").map(Number);
 
-  // Preserve time component if same-day move
-  let newDate: Date;
-  if (sameDayMove && task.scheduledDate) {
-    const hours = task.scheduledDate.getHours();
-    const minutes = task.scheduledDate.getMinutes();
-    const seconds = task.scheduledDate.getSeconds();
-    newDate = new Date(year, month - 1, day, hours, minutes, seconds);
-  } else {
-    // Cross-day move: preserve time or use midnight
-    const hours = task.scheduledDate?.getHours() ?? 0;
-    const minutes = task.scheduledDate?.getMinutes() ?? 0;
-    const seconds = task.scheduledDate?.getSeconds() ?? 0;
-    newDate = new Date(year, month - 1, day, hours, minutes, seconds);
-  }
+  // Preserve time component or use midnight
+  const hours = task.scheduledDate?.getHours() ?? 0;
+  const minutes = task.scheduledDate?.getMinutes() ?? 0;
+  const seconds = task.scheduledDate?.getSeconds() ?? 0;
+  const newDate = new Date(year, month - 1, day, hours, minutes, seconds);
 
   // Get all tasks for the target day (excluding the task being moved)
   const targetDayStart = new Date(year, month - 1, day, 0, 0, 0);
