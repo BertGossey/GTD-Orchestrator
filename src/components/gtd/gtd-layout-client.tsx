@@ -76,6 +76,7 @@ export function GtdLayoutClient({
           const newOrder = arrayMove(ids, oldIndex, newIndex);
           await reorderTasks(activeData!.section as TaskSection, newOrder);
         }
+        return;
       }
 
       // Within-section reorder
