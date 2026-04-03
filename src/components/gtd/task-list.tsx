@@ -6,7 +6,6 @@ import {
 } from "@dnd-kit/sortable";
 import { useDroppable } from "@dnd-kit/core";
 import { TaskRow } from "@/components/gtd/task-row";
-import { extractDateKey } from "@/actions/tasks";
 import type { TaskWithProject } from "@/types/gtd";
 
 export function TaskList({

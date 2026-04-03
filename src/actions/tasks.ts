@@ -149,13 +149,13 @@ export async function reorderTasks(
  * @param taskId - ID of task to reorder
  * @param targetDateKey - Target date in YYYY-MM-DD format
  * @param newIndex - Target position (0-based index)
- * @param sameDayMove - true = within-day reorder, false = cross-day move
+ * @param _sameDayMove - Not currently used (time is always preserved if available)
  */
 export async function reorderScheduledTasks(
   taskId: string,
   targetDateKey: string,
   newIndex: number,
-  sameDayMove: boolean
+  _sameDayMove: boolean
 ) {
   // Fetch the task being moved
   const task = await db.task.findUniqueOrThrow({

@@ -747,7 +747,7 @@ describe("reorderScheduledTasks", () => {
     expect(db.$transaction).toHaveBeenCalledTimes(1);
 
     // Verify sortOrder values in the transaction
-    const transactionCalls = vi.mocked(db.$transaction).mock.calls[0][0];
+    const transactionCalls = vi.mocked(db.$transaction).mock.calls[0][0] as unknown as unknown[];
     expect(transactionCalls).toHaveLength(3); // 1 moved task + 2 other tasks
 
     // Verify moved task (task-1) goes to position 2
@@ -816,7 +816,7 @@ describe("reorderScheduledTasks", () => {
     expect(db.$transaction).toHaveBeenCalledTimes(1);
 
     // Verify sortOrder values in the transaction
-    const transactionCalls = vi.mocked(db.$transaction).mock.calls[0][0];
+    const transactionCalls = vi.mocked(db.$transaction).mock.calls[0][0] as unknown as unknown[];
     expect(transactionCalls).toHaveLength(1); // Only the moved task (no other tasks on target day)
 
     // Verify moved task goes to position 0 on the new day
