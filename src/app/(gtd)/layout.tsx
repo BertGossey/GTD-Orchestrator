@@ -1,6 +1,7 @@
 import { GtdLayoutClient } from "@/components/gtd/gtd-layout-client";
 import { getActiveProjects, getProjectTaskCounts } from "@/actions/projects";
 import { getInboxCount, getSectionCounts } from "@/actions/tasks";
+import { TasksProvider } from "@/contexts/tasks-context";
 
 export default async function GtdLayout({
   children,
@@ -15,13 +16,15 @@ export default async function GtdLayout({
   ]);
 
   return (
-    <GtdLayoutClient
-      projects={projects}
-      inboxCount={inboxCount}
-      sectionCounts={sectionCounts}
-      projectCounts={projectCounts}
-    >
-      {children}
-    </GtdLayoutClient>
+    <TasksProvider>
+      <GtdLayoutClient
+        projects={projects}
+        inboxCount={inboxCount}
+        sectionCounts={sectionCounts}
+        projectCounts={projectCounts}
+      >
+        {children}
+      </GtdLayoutClient>
+    </TasksProvider>
   );
 }
