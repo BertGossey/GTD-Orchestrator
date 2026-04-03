@@ -526,14 +526,17 @@ describe("getTasksBySection", () => {
     });
   });
 
-  it("orders SCHEDULED by scheduledDate ascending", async () => {
+  it("orders SCHEDULED by scheduledDate then sortOrder", async () => {
     vi.mocked(db.task.findMany).mockResolvedValue([] as never);
 
     await getTasksBySection("SCHEDULED");
 
     expect(db.task.findMany).toHaveBeenCalledWith({
       where: { section: "SCHEDULED" },
-      orderBy: { scheduledDate: "asc" },
+      orderBy: [
+        { scheduledDate: "asc" },
+        { sortOrder: "asc" },
+      ],
       include: { project: true },
     });
   });
@@ -546,6 +549,46 @@ describe("getTasksBySection", () => {
     expect(db.task.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ orderBy: { sortOrder: "asc" } })
     );
+  });
+
+  it("should order SCHEDULED tasks by date then sortOrder", async () => {
+    const task1 = {
+      id: "task-1",
+      title: "Task 1",
+      section: "SCHEDULED",
+      scheduledDate: new Date(2026, 3, 15, 10, 0, 0),
+      sortOrder: 1,
+      project: null,
+    };
+    const task2 = {
+      id: "task-2",
+      title: "Task 2",
+      section: "SCHEDULED",
+      scheduledDate: new Date(2026, 3, 15, 14, 0, 0),
+      sortOrder: 0,
+      project: null,
+    };
+    const task3 = {
+      id: "task-3",
+      title: "Task 3",
+      section: "SCHEDULED",
+      scheduledDate: new Date(2026, 3, 16, 9, 0, 0),
+      sortOrder: 0,
+      project: null,
+    };
+
+    vi.mocked(db.task.findMany).mockResolvedValue([task2, task1, task3] as never);
+
+    await getTasksBySection("SCHEDULED");
+
+    expect(db.task.findMany).toHaveBeenCalledWith({
+      where: { section: "SCHEDULED" },
+      orderBy: [
+        { scheduledDate: "asc" },
+        { sortOrder: "asc" },
+      ],
+      include: { project: true },
+    });
   });
 });
 

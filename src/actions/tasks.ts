@@ -148,7 +148,10 @@ export async function getTasksBySection(section: TaskSection) {
   return db.task.findMany({
     where: { section },
     orderBy: section === "SCHEDULED"
-      ? { scheduledDate: "asc" }
+      ? [
+          { scheduledDate: "asc" },
+          { sortOrder: "asc" },
+        ]
       : { sortOrder: "asc" },
     include: { project: true },
   });
