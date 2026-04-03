@@ -162,12 +162,11 @@ if (
 - `src/app/(gtd)/next/page.tsx`
 - `src/app/(gtd)/waiting/page.tsx`
 - `src/app/(gtd)/someday/page.tsx`
-- `src/app/(gtd)/scheduled/page.tsx` (no provider needed - reordering disabled)
+- `src/app/(gtd)/scheduled/page.tsx` (use regular TaskList - reordering disabled)
 
 **Pattern for each page:**
 
 ```typescript
-import { TasksProvider } from "@/contexts/tasks-context";
 import { TaskListWithProvider } from "@/components/gtd/task-list-with-provider";
 
 export default async function InboxPage() {
@@ -177,19 +176,21 @@ export default async function InboxPage() {
   ]);
 
   return (
-    <TasksProvider>
-      <div>
-        <h1 className="mb-4 text-xl font-semibold">Inbox</h1>
-        <TaskListWithProvider
-          tasks={tasks}
-          projects={projects.map((p) => ({ id: p.id, title: p.title }))}
-          sectionId="INBOX"
-        />
-      </div>
-    </TasksProvider>
+    <div>
+      <h1 className="mb-4 text-xl font-semibold">Inbox</h1>
+      <TaskListWithProvider
+        tasks={tasks}
+        projects={projects.map((p) => ({ id: p.id, title: p.title }))}
+        sectionId="INBOX"
+      />
+    </div>
   );
 }
 ```
+
+**Notes:** 
+- Pages do NOT wrap in TasksProvider - that happens once at the layout level (see section 5).
+- For the Scheduled page specifically, use the regular `TaskList` component instead of `TaskListWithProvider` since reordering is disabled for date-ordered tasks. The tasks don't need to be in context if they can't be reordered.
 
 ### 4. Create TaskListWithProvider wrapper
 
