@@ -210,7 +210,7 @@ export async function reorderScheduledTasks(
     } else if (currentIndex < targetDayTasks.length) {
       updates.push({
         id: targetDayTasks[currentIndex].id,
-        sortOrder: i < newIndex ? i : i - 1,
+        sortOrder: i,
       });
       currentIndex++;
     }

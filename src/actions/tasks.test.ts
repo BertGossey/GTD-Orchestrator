@@ -745,6 +745,38 @@ describe("reorderScheduledTasks", () => {
 
     // Verify transaction was called
     expect(db.$transaction).toHaveBeenCalledTimes(1);
+
+    // Verify sortOrder values in the transaction
+    const transactionCalls = vi.mocked(db.$transaction).mock.calls[0][0];
+    expect(transactionCalls).toHaveLength(3); // 1 moved task + 2 other tasks
+
+    // Verify moved task (task-1) goes to position 2
+    expect(transactionCalls[0]).toEqual(
+      db.task.update({
+        where: { id: "task-1" },
+        data: {
+          scheduledDate: new Date(2026, 3, 15, 0, 0, 0),
+          sortOrder: 2,
+        },
+      })
+    );
+
+    // Verify task-2 stays at position 0 (was at 1, but task-1 is removed from the list)
+    expect(transactionCalls[1]).toEqual(
+      db.task.update({
+        where: { id: "task-2" },
+        data: { sortOrder: 0 },
+      })
+    );
+
+    // Verify task-3 stays at position 1 (was at 2, but task-1 is removed from the list)
+    expect(transactionCalls[2]).toEqual(
+      db.task.update({
+        where: { id: "task-3" },
+        data: { sortOrder: 1 },
+      })
+    );
+
     expect(revalidatePath).toHaveBeenCalledWith("/scheduled");
   });
 
@@ -782,6 +814,22 @@ describe("reorderScheduledTasks", () => {
 
     // Verify transaction was called
     expect(db.$transaction).toHaveBeenCalledTimes(1);
+
+    // Verify sortOrder values in the transaction
+    const transactionCalls = vi.mocked(db.$transaction).mock.calls[0][0];
+    expect(transactionCalls).toHaveLength(1); // Only the moved task (no other tasks on target day)
+
+    // Verify moved task goes to position 0 on the new day
+    expect(transactionCalls[0]).toEqual(
+      db.task.update({
+        where: { id: "task-1" },
+        data: {
+          scheduledDate: new Date(2026, 3, 16, 0, 0, 0),
+          sortOrder: 0,
+        },
+      })
+    );
+
     expect(revalidatePath).toHaveBeenCalledWith("/scheduled");
   });
 });
