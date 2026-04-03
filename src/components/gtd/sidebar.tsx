@@ -82,10 +82,14 @@ function DroppableNavItem({
 export function GtdSidebar({
   projects,
   inboxCount,
+  sectionCounts,
+  projectCounts,
   onAddProject,
 }: {
   projects: Project[];
   inboxCount: number;
+  sectionCounts: { next: number; waiting: number; scheduled: number; someday: number };
+  projectCounts: Record<string, number>;
   onAddProject: () => void;
 }) {
   const pathname = usePathname();
@@ -93,6 +97,11 @@ export function GtdSidebar({
   const collectWithCount = collectItems.map((item) =>
     item.label === "Inbox" ? { ...item, count: inboxCount } : item
   );
+
+  const actionItemsWithCounts = actionItems.map((item) => {
+    const countKey = item.label.toLowerCase() as keyof typeof sectionCounts;
+    return { ...item, count: sectionCounts[countKey] };
+  });
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r bg-sidebar p-4">
@@ -118,7 +127,7 @@ export function GtdSidebar({
           Actions
         </p>
         <nav className="space-y-1">
-          {actionItems.map((item) => (
+          {actionItemsWithCounts.map((item) => (
             <DroppableNavItem
               key={item.href}
               item={item}
@@ -140,21 +149,29 @@ export function GtdSidebar({
           </Button>
         </div>
         <nav className="space-y-1">
-          {projects.map((project) => (
-            <Link
-              key={project.id}
-              href={`/projects/${project.id}`}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                pathname === `/projects/${project.id}`
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              <FolderOpen className="size-4" />
-              <span className="truncate">{project.title}</span>
-            </Link>
-          ))}
+          {projects.map((project) => {
+            const taskCount = projectCounts[project.id] || 0;
+            return (
+              <Link
+                key={project.id}
+                href={`/projects/${project.id}`}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  pathname === `/projects/${project.id}`
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                <FolderOpen className="size-4" />
+                <span className="flex-1 truncate">{project.title}</span>
+                {taskCount > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {taskCount}
+                  </Badge>
+                )}
+              </Link>
+            );
+          })}
           {projects.length === 0 && (
             <p className="px-3 text-xs text-muted-foreground">No projects</p>
           )}
