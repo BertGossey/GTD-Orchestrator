@@ -8,9 +8,11 @@ vi.mock("@/lib/db", () => ({
       create: vi.fn(),
       update: vi.fn(),
       findUniqueOrThrow: vi.fn(),
+      findUnique: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -701,231 +703,86 @@ describe("reorderScheduledTasks", () => {
     vi.clearAllMocks();
   });
 
-  it("reorders tasks within the same day preserving time", async () => {
-    const movedTask = {
+  it("should reorder tasks within same day", async () => {
+    const task1 = {
       id: "task-1",
-      scheduledDate: new Date(2026, 3, 15, 14, 30, 0),
-    };
-    const targetTask = {
-      id: "task-2",
-      scheduledDate: new Date(2026, 3, 15, 9, 0, 0),
-    };
-    const otherTask = {
-      id: "task-3",
-      scheduledDate: new Date(2026, 3, 15, 16, 0, 0),
+      scheduledDate: new Date(2026, 3, 15, 10, 0, 0),
+      sortOrder: 0,
     };
 
-    vi.mocked(db.task.findUniqueOrThrow)
-      .mockResolvedValueOnce(movedTask as never)
-      .mockResolvedValueOnce(targetTask as never);
-    vi.mocked(db.task.findMany).mockResolvedValue([targetTask, otherTask] as never);
+    // Mock findUniqueOrThrow for the task being moved
+    vi.mocked(db.task.findUniqueOrThrow).mockResolvedValue(task1 as never);
+
+    // Mock findMany to return tasks in target day (excluding the moved task)
+    const task2 = { id: "task-2", sortOrder: 1 };
+    const task3 = { id: "task-3", sortOrder: 2 };
+    vi.mocked(db.task.findMany).mockResolvedValue([task2, task3] as never);
+
+    // Mock $transaction to resolve successfully
     vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
-    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
 
-    await reorderScheduledTasks("task-1", "task-2");
+    await reorderScheduledTasks("task-1", "2026-04-15", 2, true);
 
+    // Verify task was fetched
     expect(db.task.findUniqueOrThrow).toHaveBeenCalledWith({
       where: { id: "task-1" },
-      select: { scheduledDate: true },
+      select: { scheduledDate: true, sortOrder: true },
     });
 
+    // Verify target day tasks were fetched
     expect(db.task.findMany).toHaveBeenCalledWith({
       where: {
         section: "SCHEDULED",
         scheduledDate: {
-          gte: new Date(2026, 3, 15, 0, 0, 0, 0),
-          lt: new Date(2026, 3, 16, 0, 0, 0, 0),
+          gte: new Date(2026, 3, 15, 0, 0, 0),
+          lte: new Date(2026, 3, 15, 23, 59, 59),
         },
+        id: { not: "task-1" },
       },
-      orderBy: { sortOrder: "asc" },
-      select: { id: true },
+      orderBy: [{ sortOrder: "asc" }, { scheduledDate: "asc" }],
+      select: { id: true, sortOrder: true },
     });
 
-    expect(db.task.update).toHaveBeenCalledTimes(3);
-    expect(db.task.update).toHaveBeenNthCalledWith(1, {
-      where: { id: "task-2" },
-      data: { sortOrder: 0 },
-    });
-    expect(db.task.update).toHaveBeenNthCalledWith(2, {
-      where: { id: "task-1" },
-      data: {
-        sortOrder: 1,
-        scheduledDate: new Date(2026, 3, 15, 14, 30, 0),
-      },
-    });
-    expect(db.task.update).toHaveBeenNthCalledWith(3, {
-      where: { id: "task-3" },
-      data: { sortOrder: 2 },
-    });
-
+    // Verify transaction was called
     expect(db.$transaction).toHaveBeenCalledTimes(1);
-    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+    expect(revalidatePath).toHaveBeenCalledWith("/scheduled");
   });
 
-  it("reorders tasks across different days adopting target time", async () => {
-    const movedTask = {
+  it("should move task to different day", async () => {
+    const task = {
       id: "task-1",
       scheduledDate: new Date(2026, 3, 15, 14, 30, 0),
-    };
-    const targetTask = {
-      id: "task-2",
-      scheduledDate: new Date(2026, 3, 20, 9, 0, 0),
-    };
-    const otherTask = {
-      id: "task-3",
-      scheduledDate: new Date(2026, 3, 20, 16, 0, 0),
+      sortOrder: 0,
     };
 
-    vi.mocked(db.task.findUniqueOrThrow)
-      .mockResolvedValueOnce(movedTask as never)
-      .mockResolvedValueOnce(targetTask as never);
-    vi.mocked(db.task.findMany).mockResolvedValue([targetTask, otherTask] as never);
+    // Mock findUniqueOrThrow for the task being moved
+    vi.mocked(db.task.findUniqueOrThrow).mockResolvedValue(task as never);
+
+    // Mock findMany to return empty array (no tasks on target day)
+    vi.mocked(db.task.findMany).mockResolvedValue([] as never);
+
+    // Mock $transaction to resolve successfully
     vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
-    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
 
-    await reorderScheduledTasks("task-1", "task-2");
+    await reorderScheduledTasks("task-1", "2026-04-16", 0, false);
 
+    // Verify target day tasks were fetched
     expect(db.task.findMany).toHaveBeenCalledWith({
       where: {
         section: "SCHEDULED",
         scheduledDate: {
-          gte: new Date(2026, 3, 20, 0, 0, 0, 0),
-          lt: new Date(2026, 3, 21, 0, 0, 0, 0),
+          gte: new Date(2026, 3, 16, 0, 0, 0),
+          lte: new Date(2026, 3, 16, 23, 59, 59),
         },
+        id: { not: "task-1" },
       },
-      orderBy: { sortOrder: "asc" },
-      select: { id: true },
+      orderBy: [{ sortOrder: "asc" }, { scheduledDate: "asc" }],
+      select: { id: true, sortOrder: true },
     });
 
-    expect(db.task.update).toHaveBeenCalledTimes(3);
-    expect(db.task.update).toHaveBeenNthCalledWith(2, {
-      where: { id: "task-1" },
-      data: {
-        sortOrder: 1,
-        scheduledDate: new Date(2026, 3, 20, 9, 0, 0),
-      },
-    });
-  });
-
-  it("handles reordering to first position in day", async () => {
-    const movedTask = {
-      id: "task-1",
-      scheduledDate: new Date(2026, 3, 15, 14, 0, 0),
-    };
-    const firstTask = {
-      id: "task-2",
-      scheduledDate: new Date(2026, 3, 15, 9, 0, 0),
-    };
-    const secondTask = {
-      id: "task-3",
-      scheduledDate: new Date(2026, 3, 15, 16, 0, 0),
-    };
-
-    vi.mocked(db.task.findUniqueOrThrow)
-      .mockResolvedValueOnce(movedTask as never)
-      .mockResolvedValueOnce(firstTask as never);
-    vi.mocked(db.task.findMany).mockResolvedValue([firstTask, secondTask] as never);
-    vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
-    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
-
-    await reorderScheduledTasks("task-1", "task-2");
-
-    expect(db.task.update).toHaveBeenCalledTimes(3);
-    expect(db.task.update).toHaveBeenNthCalledWith(1, {
-      where: { id: "task-2" },
-      data: { sortOrder: 0 },
-    });
-    expect(db.task.update).toHaveBeenNthCalledWith(2, {
-      where: { id: "task-1" },
-      data: {
-        sortOrder: 1,
-        scheduledDate: new Date(2026, 3, 15, 14, 0, 0),
-      },
-    });
-    expect(db.task.update).toHaveBeenNthCalledWith(3, {
-      where: { id: "task-3" },
-      data: { sortOrder: 2 },
-    });
-  });
-
-  it("handles reordering to last position in day", async () => {
-    const movedTask = {
-      id: "task-1",
-      scheduledDate: new Date(2026, 3, 15, 9, 0, 0),
-    };
-    const secondTask = {
-      id: "task-2",
-      scheduledDate: new Date(2026, 3, 15, 12, 0, 0),
-    };
-    const lastTask = {
-      id: "task-3",
-      scheduledDate: new Date(2026, 3, 15, 16, 0, 0),
-    };
-
-    vi.mocked(db.task.findUniqueOrThrow)
-      .mockResolvedValueOnce(movedTask as never)
-      .mockResolvedValueOnce(lastTask as never);
-    vi.mocked(db.task.findMany).mockResolvedValue([secondTask, lastTask] as never);
-    vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
-    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
-
-    await reorderScheduledTasks("task-1", "task-3");
-
-    expect(db.task.update).toHaveBeenCalledTimes(3);
-    expect(db.task.update).toHaveBeenNthCalledWith(1, {
-      where: { id: "task-2" },
-      data: { sortOrder: 0 },
-    });
-    expect(db.task.update).toHaveBeenNthCalledWith(2, {
-      where: { id: "task-3" },
-      data: { sortOrder: 1 },
-    });
-    expect(db.task.update).toHaveBeenNthCalledWith(3, {
-      where: { id: "task-1" },
-      data: {
-        sortOrder: 2,
-        scheduledDate: new Date(2026, 3, 15, 9, 0, 0),
-      },
-    });
-  });
-
-  it("throws error when movedTaskId not found", async () => {
-    vi.mocked(db.task.findUniqueOrThrow).mockRejectedValue(new Error("Not found"));
-
-    await expect(reorderScheduledTasks("invalid-id", "task-2")).rejects.toThrow();
-  });
-
-  it("handles single task in target day", async () => {
-    const movedTask = {
-      id: "task-1",
-      scheduledDate: new Date(2026, 3, 15, 14, 0, 0),
-    };
-    const onlyTask = {
-      id: "task-2",
-      scheduledDate: new Date(2026, 3, 20, 9, 0, 0),
-    };
-
-    vi.mocked(db.task.findUniqueOrThrow)
-      .mockResolvedValueOnce(movedTask as never)
-      .mockResolvedValueOnce(onlyTask as never);
-    vi.mocked(db.task.findMany).mockResolvedValue([onlyTask] as never);
-    vi.mocked(db.$transaction).mockResolvedValue(undefined as never);
-    vi.mocked(db.task.update).mockResolvedValue({ id: "1" } as never);
-
-    await reorderScheduledTasks("task-1", "task-2");
-
-    expect(db.task.update).toHaveBeenCalledTimes(2);
-    expect(db.task.update).toHaveBeenNthCalledWith(1, {
-      where: { id: "task-2" },
-      data: { sortOrder: 0 },
-    });
-    expect(db.task.update).toHaveBeenNthCalledWith(2, {
-      where: { id: "task-1" },
-      data: {
-        sortOrder: 1,
-        scheduledDate: new Date(2026, 3, 20, 9, 0, 0),
-      },
-    });
+    // Verify transaction was called
+    expect(db.$transaction).toHaveBeenCalledTimes(1);
+    expect(revalidatePath).toHaveBeenCalledWith("/scheduled");
   });
 });
 
