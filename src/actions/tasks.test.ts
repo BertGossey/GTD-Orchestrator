@@ -37,6 +37,7 @@ import {
   getInboxCount,
   deleteTask,
   getSectionCounts,
+  extractDateKey,
 } from "./tasks";
 
 describe("createTask", () => {
@@ -611,5 +612,31 @@ describe("getSectionCounts", () => {
       scheduled: 7,
       someday: 2,
     });
+  });
+});
+
+describe("extractDateKey", () => {
+  it("should extract YYYY-MM-DD from Date object", () => {
+    const date = new Date(2026, 3, 15, 14, 30, 0); // April 15, 2026, 2:30 PM
+    expect(extractDateKey(date)).toBe("2026-04-15");
+  });
+
+  it("should pad single-digit months and days with zero", () => {
+    const date = new Date(2026, 0, 5, 9, 0, 0); // January 5, 2026
+    expect(extractDateKey(date)).toBe("2026-01-05");
+  });
+
+  it("should return null for null input", () => {
+    expect(extractDateKey(null)).toBeNull();
+  });
+
+  it("should preserve date regardless of time", () => {
+    const midnight = new Date(2026, 3, 15, 0, 0, 0);
+    const noon = new Date(2026, 3, 15, 12, 0, 0);
+    const evening = new Date(2026, 3, 15, 23, 59, 59);
+
+    expect(extractDateKey(midnight)).toBe("2026-04-15");
+    expect(extractDateKey(noon)).toBe("2026-04-15");
+    expect(extractDateKey(evening)).toBe("2026-04-15");
   });
 });
