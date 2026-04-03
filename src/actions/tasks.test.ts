@@ -552,35 +552,66 @@ describe("getTasksBySection", () => {
   });
 
   it("should order SCHEDULED tasks by date then sortOrder", async () => {
+    // Create tasks that would demonstrate correct composite ordering
+    // task2 and task1 are on Apr 15 (same date) but different sortOrders
+    // task3 is on Apr 16 (later date)
     const task1 = {
       id: "task-1",
       title: "Task 1",
-      section: "SCHEDULED",
-      scheduledDate: new Date(2026, 3, 15, 10, 0, 0),
+      section: "SCHEDULED" as const,
+      scheduledDate: new Date(2026, 3, 15),
       sortOrder: 1,
       project: null,
+      description: null,
+      dueDate: null,
+      projectId: null,
+      rawInput: "Task 1",
+      waitingFor: null,
+      completedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
+
     const task2 = {
       id: "task-2",
       title: "Task 2",
-      section: "SCHEDULED",
-      scheduledDate: new Date(2026, 3, 15, 14, 0, 0),
+      section: "SCHEDULED" as const,
+      scheduledDate: new Date(2026, 3, 15),
       sortOrder: 0,
       project: null,
+      description: null,
+      dueDate: null,
+      projectId: null,
+      rawInput: "Task 2",
+      waitingFor: null,
+      completedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
+
     const task3 = {
       id: "task-3",
       title: "Task 3",
-      section: "SCHEDULED",
-      scheduledDate: new Date(2026, 3, 16, 9, 0, 0),
+      section: "SCHEDULED" as const,
+      scheduledDate: new Date(2026, 3, 16),
       sortOrder: 0,
       project: null,
+      description: null,
+      dueDate: null,
+      projectId: null,
+      rawInput: "Task 3",
+      waitingFor: null,
+      completedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
+    // Mock findMany to return tasks in correct composite order
     vi.mocked(db.task.findMany).mockResolvedValue([task2, task1, task3] as never);
 
-    await getTasksBySection("SCHEDULED");
+    const tasks = await getTasksBySection("SCHEDULED");
 
+    // Verify correct query parameters for composite ordering
     expect(db.task.findMany).toHaveBeenCalledWith({
       where: { section: "SCHEDULED" },
       orderBy: [
@@ -589,6 +620,12 @@ describe("getTasksBySection", () => {
       ],
       include: { project: true },
     });
+
+    // Verify actual returned task order matches composite ordering expectation
+    expect(tasks).toHaveLength(3);
+    expect(tasks[0].id).toBe("task-2"); // Apr 15, sortOrder 0
+    expect(tasks[1].id).toBe("task-1"); // Apr 15, sortOrder 1
+    expect(tasks[2].id).toBe("task-3"); // Apr 16, sortOrder 0
   });
 });
 
